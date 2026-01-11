@@ -1,0 +1,8 @@
+numpy
+opencv-python
+onnxruntime
+pyserial
+requests
+baidu-aip
+PyAudio
+flask

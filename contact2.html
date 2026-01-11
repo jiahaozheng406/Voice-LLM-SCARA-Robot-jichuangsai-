@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="zh">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>零乱终结者 - DeepSeek语音助手小奕</title>
+    <style>
+
+
+
+      body {
+        font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
+        margin: 0;
+        padding: 0;
+        height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        background: radial-gradient(
+          circle at top left,
+          #0d1b2a,
+          #1b263b,
+          #0d1b2a
+        );
+        color: #fff;
+        overflow: hidden;
+      }
+      #chat-container {
+        width: 90%;
+        max-width: 900px;
+        height: 90vh;
+        max-height: 700px;
+        display: flex;
+        flex-direction: column;
+        background: rgba(20, 30, 50, 0.95);
+        border-radius: 15px;
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.5);
+        overflow: hidden;
+        border: 1px solid rgba(0, 200, 255, 0.3);
+      }
+      #header {
+        background: linear-gradient(90deg, #00c6ff, #0072ff);
+        color: white;
+        text-align: center;
+        padding: 18px;
+        font-size: 22px;
+        font-weight: bold;
+        letter-spacing: 2px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        position: relative;
+      }
+      #status-indicator {
+        position: absolute;
+        right: 20px;
+        top: 50%;
+        transform: translateY(-50%);
+        display: flex;
+        align-items: center;
+        font-size: 14px;
+      }
+      #status-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background-color: #38ef7d;
+        margin-right: 6px;
+        animation: pulse 2s infinite;
+      }
+      @keyframes pulse {
+        0% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.5;
+        }
+        100% {
+          opacity: 1;
+        }
+      }
+      #chat-box {
+        flex: 1;
+        padding: 20px;
+        overflow-y: auto;
+        scrollbar-width: thin;
+        scrollbar-color: #00c6ff #1b263b;
+      }
+      #chat-box::-webkit-scrollbar {
+        width: 6px;
+      }
+      #chat-box::-webkit-scrollbar-thumb {
+        background: #00c6ff;
+        border-radius: 3px;
+      }
+      #chat-box::-webkit-scrollbar-track {
+        background: #1b263b;
+      }
+      .msg {
+        margin: 12px 0;
+        padding: 12px 16px;
+        border-radius: 10px;
+        max-width: 70%;
+        line-height: 1.5;
+        white-space: pre-wrap;
+        animation: fadeIn 0.3s ease-in-out;
+      }
+      .user {
+        background: linear-gradient(135deg, #3a7bd5, #3a6073);
+        text-align: right;
+        margin-left: auto;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+      }
+      .bot {
+        background: linear-gradient(135deg, #11998e, #38ef7d);
+        text-align: left;
+        margin-right: auto;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+      }
+      .system {
+        background: #444;
+        color: #fff;
+        text-align: center;
+        margin-left: auto;
+        margin-right: auto;
+        max-width: 50%;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        display: none; /* 关键修改：隐藏系统消息 */
+      }
+      .timestamp {
+        font-size: 12px;
+        opacity: 0.7;
+        margin-bottom: 4px;
+      }
+      #control-bar {
+        padding: 15px;
+        text-align: center;
+        background: rgba(0, 0, 0, 0.2);
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+      }
+      button {
+        padding: 12px 28px;
+        font-size: 16px;
+        cursor: pointer;
+        border: none;
+        border-radius: 8px;
+        background: linear-gradient(90deg, #00c6ff, #0072ff);
+        color: white;
+        font-weight: bold;
+        letter-spacing: 1px;
+        transition: transform 0.2s, box-shadow 0.2s, background 0.3s;
+        min-width: 200px;
+      }
+      button:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(0, 200, 255, 0.5);
+      }
+      button:disabled {
+        background: linear-gradient(90deg, #6c757d, #495057);
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
+      }
+      button.recording {
+        background: linear-gradient(90deg, #00b42a, #008141);
+      }
+      button.recording:hover:not(:disabled) {
+        box-shadow: 0 4px 15px rgba(0, 180, 42, 0.5);
+      }
+      #device-info {
+        font-size: 12px;
+        margin-top: 10px;
+        color: rgba(255, 255, 255, 0.7);
+      }
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      .recording-indicator {
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background-color: #38ef7d;
+        margin-right: 8px;
+        animation: blink 1s infinite;
+      }
+      @keyframes blink {
+        0% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.3;
+        }
+        100% {
+          opacity: 1;
+        }
+      }
+      .loading-indicator {
+        display: inline-block;
+        width: 16px;
+        height: 16px;
+        border: 3px solid rgba(255, 255, 255, 0.3);
+        border-radius: 50%;
+        border-top-color: white;
+        animation: spin 1s ease-in-out infinite;
+        margin-right: 8px;
+      }
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      @media (max-width: 768px) {
+        .msg {
+          max-width: 85%;
+        }
+        #header {
+          font-size: 18px;
+          padding: 14px;
+        }
+        button {
+          padding: 10px 20px;
+          font-size: 14px;
+          min-width: auto;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="chat-container">
+      <div id="header">
+        零乱终结者 · DeepSeek-Agent桌面智能助手小奕
+        <div id="status-indicator">
+          <span id="status-dot"></span>
+          <span>服务在线</span>
+        </div>
+      </div>
+      <div id="chat-box">
+        <h3 style="text-align: center; color: #00c6ff; margin-top: 5px">
+          🎤 开始和小奕对话吧！
+        </h3>
+        <div id="messages"></div>
+      </div>
+      <div id="control-bar">
+        <button id="record-btn">🎙 点击开始录音</button>
+        <div id="device-info">麦克风ID: 加载中... | 扬声器ID: 加载中...</div>
+      </div>
+    </div>
+
+    <script>
+      // 全局变量
+      const recordBtn = document.getElementById("record-btn");
+      const msgBox = document.getElementById("messages");
+      const deviceInfo = document.getElementById("device-info");
+      const statusDot = document.getElementById("status-dot");
+      const statusText = document.querySelector(
+        "#status-indicator span:last-child"
+      );
+
+      let mediaRecorder;
+      let audioContext;
+      let sourceNode;
+      let stream;
+      let audioChunks = [];
+      let isRecording = false;
+      let isProcessing = false;
+      const API_URL = "http://192.168.137.1:8000/stt";
+      let deviceData = { mic_id: "未知", speaker_id: "未知" };
+      const MAX_RECORD_TIME = 10000; // 最大录音时间(毫秒)
+      let recordTimer = null;
+      let currentRecordMsg = null; // 当前录音状态消息
+
+      // 初始化音频上下文
+      function initAudioContext() {
+        try {
+          window.AudioContext =
+            window.AudioContext || window.webkitAudioContext;
+          if (!audioContext) {
+            audioContext = new AudioContext();
+          }
+          return true;
+        } catch (e) {
+          // 仅在控制台输出错误，不显示在界面上
+          console.error("AudioContext初始化失败:", e);
+          return false;
+        }
+      }
+
+      // 更新设备信息显示
+      function updateDeviceInfo() {
+        deviceInfo.textContent = `麦克风ID: ${deviceData.mic_id} | 扬声器ID: ${deviceData.speaker_id}`;
+      }
+
+      // 添加消息到界面 - 系统消息会被CSS隐藏
+      function addMessage(sender, text) {
+        const now = new Date();
+        const timeString = now.toLocaleTimeString();
+
+        const msgDiv = document.createElement("div");
+        msgDiv.className = `msg ${sender}`;
+
+        let prefix = "";
+        if (sender === "user") prefix = "🧑 你说:";
+        else if (sender === "bot") prefix = "🤖 小奕:";
+        else if (sender === "system") prefix = "ℹ️ 系统:";
+
+        msgDiv.innerHTML = `<div class="timestamp">${timeString}</div>${prefix}<br>${text}`;
+        msgBox.appendChild(msgDiv);
+        msgBox.scrollTop = msgBox.scrollHeight;
+
+        return msgDiv;
+      }
+
+      // 播放语音回复
+      function playTTS(text) {
+        // 停止任何正在播放的语音
+        window.speechSynthesis.cancel();
+
+        // 检查语音合成支持
+        if (!window.speechSynthesis) {
+          // 仅在控制台输出错误，不显示在界面上
+          console.error("浏览器不支持语音合成，无法播放回复");
+          return;
+        }
+
+        try {
+          const utterance = new SpeechSynthesisUtterance(text);
+          utterance.lang = "zh-CN";
+          utterance.rate = 1; // 语速
+          utterance.pitch = 1; // 音调
+          utterance.volume = 1; // 音量
+
+          // 语音播放结束后恢复按钮状态
+          utterance.onend = function () {
+            if (!isRecording) {
+              recordBtn.disabled = false;
+              recordBtn.innerHTML = "🎙 点击开始录音";
+              recordBtn.classList.remove("recording");
+            }
+          };
+
+          utterance.onerror = function (event) {
+            // 仅在控制台输出错误，不显示在界面上
+            console.error(`语音播放失败: ${event.error}`);
+            recordBtn.disabled = false;
+            recordBtn.innerHTML = "🎙 点击开始录音";
+            recordBtn.classList.remove("recording");
+          };
+
+          // 系统消息会被CSS隐藏，不影响界面
+          addMessage("system", "正在播放回复...");
+          speechSynthesis.speak(utterance);
+        } catch (e) {
+          // 仅在控制台输出错误，不显示在界面上
+          console.error(`语音合成错误: ${e.message}`);
+          recordBtn.disabled = false;
+          recordBtn.innerHTML = "🎙 点击开始录音";
+          recordBtn.classList.remove("recording");
+        }
+      }
+
+      // 检查浏览器支持
+      function checkBrowserSupport() {
+        // 检查媒体设备支持
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          // 仅在控制台输出错误，不显示在界面上
+          console.error(
+            "浏览器不支持语音录制功能，请使用最新版Chrome、Firefox或Edge浏览器"
+          );
+          recordBtn.disabled = true;
+          return false;
+        }
+
+        // 检查Web Audio API支持
+        if (!window.AudioContext && !window.webkitAudioContext) {
+          // 仅在控制台输出错误，不显示在界面上
+          console.error("浏览器不支持音频处理功能");
+          recordBtn.disabled = true;
+          return false;
+        }
+
+        return true;
+      }
+
+      // 转换音频格式为16kHz单声道WAV
+      async function convertAudioFormat(audioBlob) {
+        // 系统消息会被CSS隐藏，不影响界面
+        const convertMsg = addMessage("system", "正在转换音频格式...");
+
+        try {
+          // 初始化音频上下文
+          if (!initAudioContext()) {
+            throw new Error("无法初始化音频上下文");
+          }
+
+          // 解码音频
+          const arrayBuffer = await new Response(audioBlob).arrayBuffer();
+          const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+
+          // 创建16kHz的目标采样率
+          const targetSampleRate = 16000;
+
+          // 如果当前采样率已经是16kHz且是单声道，直接返回
+          if (
+            audioBuffer.sampleRate === targetSampleRate &&
+            audioBuffer.numberOfChannels === 1
+          ) {
+            convertMsg.innerHTML = convertMsg.innerHTML.replace(
+              "正在转换",
+              "音频格式无需转换"
+            );
+            return audioBlob;
+          }
+
+          // 创建离线音频上下文进行重采样
+          const offlineContext = new OfflineAudioContext(
+            1, // 单声道
+            Math.ceil(
+              (audioBuffer.length * targetSampleRate) / audioBuffer.sampleRate
+            ),
+            targetSampleRate
+          );
+
+          // 创建源节点
+          const source = offlineContext.createBufferSource();
+          source.buffer = audioBuffer;
+
+          // 连接到目的地
+          source.connect(offlineContext.destination);
+
+          // 开始处理
+          source.start(0);
+          const processedBuffer = await offlineContext.startRendering();
+
+          // 将处理后的音频转换为WAV格式
+          const wavBlob = audioBufferToWav(processedBuffer);
+
+          convertMsg.innerHTML = convertMsg.innerHTML.replace(
+            "正在转换",
+            "音频格式转换完成"
+          );
+          return wavBlob;
+        } catch (e) {
+          console.error("音频转换错误:", e);
+          convertMsg.innerHTML = convertMsg.innerHTML.replace(
+            "正在转换",
+            `音频格式转换失败: ${e.message}`
+          );
+          throw e;
+        }
+      }
+
+      // 将AudioBuffer转换为WAV格式的Blob
+      function audioBufferToWav(buffer) {
+        const numOfChannels = buffer.numberOfChannels;
+        const length = buffer.length * numOfChannels * 2 + 44;
+        const bufferArray = new ArrayBuffer(length);
+        const view = new DataView(bufferArray);
+        const channels = [];
+
+        // 写入WAV头部
+        writeString(view, 0, "RIFF");
+        view.setUint32(4, length - 8, true);
+        writeString(view, 8, "WAVE");
+        writeString(view, 12, "fmt ");
+        view.setUint32(16, 16, true);
+        view.setUint16(20, 1, true);
+        view.setUint16(22, numOfChannels, true);
+        view.setUint32(24, buffer.sampleRate, true);
+        view.setUint32(28, buffer.sampleRate * numOfChannels * 2, true);
+        view.setUint16(32, numOfChannels * 2, true);
+        view.setUint16(34, 16, true);
+        writeString(view, 36, "data");
+        view.setUint32(40, buffer.length * numOfChannels * 2, true);
+
+        // 收集所有声道数据
+        for (let i = 0; i < numOfChannels; i++) {
+          channels.push(buffer.getChannelData(i));
+        }
+
+        // 写入音频数据
+        let offset = 44;
+        for (let i = 0; i < buffer.length; i++) {
+          for (let j = 0; j < numOfChannels; j++) {
+            const sample = Math.max(-1, Math.min(1, channels[j][i]));
+            view.setInt16(
+              offset,
+              sample < 0 ? sample * 0x8000 : sample * 0x7fff,
+              true
+            );
+            offset += 2;
+          }
+        }
+
+        return new Blob([bufferArray], { type: "audio/wav" });
+      }
+
+      // 辅助函数：写入字符串到DataView
+      function writeString(view, offset, string) {
+        for (let i = 0; i < string.length; i++) {
+          view.setUint8(offset + i, string.charCodeAt(i));
+        }
+      }
+
+      // 停止录音
+      function stopRecording() {
+        if (isRecording && mediaRecorder) {
+          // 清除录音计时器
+          if (recordTimer) {
+            clearTimeout(recordTimer);
+            recordTimer = null;
+          }
+
+          isRecording = false;
+          mediaRecorder.stop();
+
+          // 更新按钮状态
+          recordBtn.innerHTML =
+            '<span class="loading-indicator"></span>处理中...';
+          recordBtn.classList.remove("recording");
+
+          // 更新录音状态消息（会被CSS隐藏）
+          if (currentRecordMsg) {
+            currentRecordMsg.innerHTML = currentRecordMsg.innerHTML.replace(
+              "正在录音",
+              "录音已停止，处理中..."
+            );
+          }
+
+          // 停止所有音轨
+          if (stream) {
+            stream.getTracks().forEach((track) => track.stop());
+            stream = null;
+          }
+
+          // 关闭音频节点
+          if (sourceNode) {
+            sourceNode.disconnect();
+            sourceNode = null;
+          }
+        }
+      }
+
+      // 发送音频到服务器处理
+      async function processAudio(audioBlob) {
+        if (isProcessing) return;
+        isProcessing = true;
+
+        try {
+          // 系统消息会被CSS隐藏，不影响界面
+          addMessage("system", "正在发送音频到服务器处理...");
+
+          const reader = new FileReader();
+          reader.onload = async () => {
+            try {
+              // 发送请求
+              const response = await fetch(API_URL, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ audio: reader.result }),
+                timeout: 30000, // 30秒超时
+              });
+
+              // 检查HTTP状态
+              if (!response.ok) {
+                let errorMsg = `服务器错误: HTTP ${response.status}`;
+                try {
+                  const errorData = await response.json();
+                  errorMsg += ` - ${
+                    errorData.message || errorData.details || "未知错误"
+                  }`;
+                } catch (e) {
+                  // 尝试获取文本错误信息
+                  const text = await response.text();
+                  errorMsg += ` - ${text.substring(0, 100)}`;
+                }
+                throw new Error(errorMsg);
+              }
+
+              // 解析响应
+              const contentType = response.headers.get("content-type");
+              if (!contentType || !contentType.includes("application/json")) {
+                const text = await response.text();
+                throw new Error(
+                  `服务器返回非JSON数据: ${text.substring(0, 100)}`
+                );
+              }
+
+              const data = await response.json();
+
+              // 更新设备信息
+              if (data.device_info) {
+                deviceData = data.device_info;
+                updateDeviceInfo();
+              }
+
+              // 显示结果
+              if (data.status === "success") {
+                addMessage("user", data.user_text);
+                const botMsg = addMessage("bot", data.reply);
+
+                // 自动播放回复
+                playTTS(data.reply);
+              } else {
+                throw new Error(data.message || "处理失败，未返回具体原因");
+              }
+            } catch (err) {
+              console.error("请求处理错误:", err);
+              // 系统消息会被CSS隐藏，不影响界面
+              addMessage("system", `服务错误: ${err.message}`);
+            } finally {
+              isProcessing = false;
+              recordBtn.disabled = false;
+              recordBtn.innerHTML = "🎙 点击开始录音";
+            }
+          };
+
+          reader.onerror = function () {
+            // 系统消息会被CSS隐藏，不影响界面
+            addMessage("system", `文件读取错误: ${reader.error.message}`);
+            isProcessing = false;
+            recordBtn.disabled = false;
+            recordBtn.innerHTML = "🎙 点击开始录音";
+          };
+
+          reader.readAsDataURL(audioBlob);
+        } catch (err) {
+          console.error("处理音频失败:", err);
+          // 系统消息会被CSS隐藏，不影响界面
+          addMessage("system", `处理音频失败: ${err.message}`);
+          isProcessing = false;
+          recordBtn.disabled = false;
+          recordBtn.innerHTML = "🎙 点击开始录音";
+        }
+      }
+
+      // 录音按钮事件
+      recordBtn.addEventListener("click", async () => {
+        if (isProcessing) return;
+
+        if (!checkBrowserSupport()) return;
+
+        try {
+          if (isRecording) {
+            // 停止录音
+            stopRecording();
+            return;
+          }
+
+          // 开始录音
+          recordBtn.disabled = true;
+
+          // 请求麦克风权限
+          try {
+            stream = await navigator.mediaDevices.getUserMedia({
+              audio: {
+                echoCancellation: true,
+                noiseSuppression: true,
+                sampleRate: 16000, // 优先请求16kHz
+              },
+            });
+          } catch (err) {
+            // 系统消息会被CSS隐藏，不影响界面
+            addMessage("system", "尝试使用默认音频配置...");
+            stream = await navigator.mediaDevices.getUserMedia({
+              audio: {
+                echoCancellation: true,
+                noiseSuppression: true,
+              },
+            });
+          }
+
+          // 初始化录音
+          audioChunks = [];
+          mediaRecorder = new MediaRecorder(stream);
+
+          mediaRecorder.ondataavailable = (e) => {
+            audioChunks.push(e.data);
+          };
+
+          mediaRecorder.onstop = async () => {
+            try {
+              const audioBlob = new Blob(audioChunks, { type: "audio/wav" });
+
+              // 检查音频长度
+              if (audioBlob.size < 1024) {
+                throw new Error("录音数据过短，请重新尝试");
+              }
+
+              // 转换音频格式
+              const formattedBlob = await convertAudioFormat(audioBlob);
+
+              // 处理音频
+              await processAudio(formattedBlob);
+            } catch (err) {
+              console.error("录音处理错误:", err);
+              // 系统消息会被CSS隐藏，不影响界面
+              addMessage("system", `录音处理错误: ${err.message}`);
+              recordBtn.disabled = false;
+              recordBtn.innerHTML = "🎙 点击开始录音";
+            }
+          };
+
+          mediaRecorder.onerror = function (err) {
+            console.error("录音错误:", err);
+            // 系统消息会被CSS隐藏，不影响界面
+            addMessage("system", `录音失败: ${err.message}`);
+            stopRecording();
+            recordBtn.disabled = false;
+            recordBtn.innerHTML = "🎙 点击开始录音";
+          };
+
+          // 开始录音
+          mediaRecorder.start();
+          isRecording = true;
+          recordBtn.disabled = false;
+          recordBtn.innerHTML =
+            '<span class="recording-indicator"></span>⏹ 停止录音';
+          recordBtn.classList.add("recording");
+          // 系统消息会被CSS隐藏，不影响界面
+          currentRecordMsg = addMessage("system", "正在录音...（最长10秒）");
+
+          // 设置最大录音时间
+          recordTimer = setTimeout(() => {
+            if (isRecording) {
+              currentRecordMsg.innerHTML = currentRecordMsg.innerHTML.replace(
+                "正在录音",
+                "已达到最长录音时间，自动停止"
+              );
+              stopRecording();
+            }
+          }, MAX_RECORD_TIME);
+        } catch (err) {
+          console.error("录音启动错误:", err);
+          // 系统消息会被CSS隐藏，不影响界面
+          addMessage(
+            "system",
+            `麦克风访问失败: ${err.message || "请检查麦克风权限"}`
+          );
+          isRecording = false;
+          recordBtn.disabled = false;
+          recordBtn.innerHTML = "🎙 点击开始录音";
+          recordBtn.classList.remove("recording");
+
+          // 清理流
+          if (stream) {
+            stream.getTracks().forEach((track) => track.stop());
+            stream = null;
+          }
+        }
+      });
+
+      // 页面加载完成后初始化
+      window.onload = function () {
+        checkBrowserSupport();
+        updateDeviceInfo();
+      };
+
+      // 窗口关闭时清理
+      window.onbeforeunload = function () {
+        if (isRecording) {
+          stopRecording();
+        }
+
+        if (audioContext) {
+          audioContext.close();
+        }
+      };
+    </script>
+  </body>
+</html>
